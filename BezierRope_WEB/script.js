@@ -1,0 +1,209 @@
+function clamp(v,a,b){return Math.max(a,Math.min(b,v))}
+function lerp(a,b,t){return a+(b-a)*t}
+function vec(x,y){return {x:x,y:y}}
+function add(a,b){return {x:a.x+b.x,y:a.y+b.y}}
+function sub(a,b){return {x:a.x-b.x,y:a.y-b.y}}
+function mul(a,s){return {x:a.x*s,y:a.y*s}}
+function len(a){return Math.hypot(a.x,a.y)}
+function normalize(a){let l=len(a)||1; return {x:a.x/l,y:a.y/l}}
+
+function bezierPoint(t,P0,P1,P2,P3){
+  let u = 1 - t;
+  let u2 = u*u, u3=u2*u;
+  let t2 = t*t, t3 = t2*t;
+  return add(add(mul(P0,u3), mul(P1, 3*u2*t)), add(mul(P2,3*u*t2), mul(P3,t3)));
+}
+
+function bezierDeriv(t,P0,P1,P2,P3){
+  let u = 1 - t;
+  let c1 = 3*u*u;
+  let c2 = 6*u*t;
+  let c3 = 3*t*t;
+  return add(add(mul(sub(P1,P0),c1), mul(sub(P2,P1),c2)), mul(sub(P3,P2),c3));
+}
+
+class SpringPoint {
+  constructor(x,y){
+    this.pos = vec(x,y);
+    this.vel = vec(0,0);
+    this.target = vec(x,y);
+    this.mass = 1;
+    this.k = 80;
+    this.damping = 14;
+  }
+  step(dt){
+    let disp = sub(this.pos, this.target);
+    let acc = mul(disp, -this.k / this.mass);
+    acc = add(acc, mul(this.vel, -this.damping/this.mass));
+    this.vel = add(this.vel, mul(acc, dt));
+    this.pos = add(this.pos, mul(this.vel, dt));
+  }
+}
+
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+let DPR = Math.max(1, window.devicePixelRatio || 1);
+function resize(){
+  canvas.width = Math.floor(innerWidth * DPR);
+  canvas.height = Math.floor(innerHeight * DPR);
+  canvas.style.width = innerWidth + 'px';
+  canvas.style.height = innerHeight + 'px';
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+}
+window.addEventListener('resize', resize);
+resize();
+
+const margin = 80;
+let P0fixed = vec(margin, innerHeight/2);
+let P3fixed = vec(innerWidth - margin, innerHeight/2);
+
+function resetPoints(){
+  P0fixed = vec(margin, innerHeight/2);
+  P3fixed = vec(innerWidth - margin, innerHeight/2);
+  let midX = (P0fixed.x + P3fixed.x)/2;
+  p1 = new SpringPoint(lerp(P0fixed.x, midX, 0.5), P0fixed.y - 120);
+  p2 = new SpringPoint(lerp(midX, P3fixed.x, 0.5), P3fixed.y - 120);
+}
+
+let p1, p2;
+resetPoints();
+
+const actionMode = document.getElementById('mode');
+document.getElementById('reset').addEventListener('click', ()=>{resetPoints()});
+
+let mouse = vec(innerWidth/2, innerHeight/2);
+let isDown = false;
+let dragTarget = null;
+
+canvas.addEventListener('mousemove', (e)=>{
+  mouse = vec(e.clientX, e.clientY);
+  if(isDown && dragTarget){
+    dragTarget.target = vec(e.clientX, e.clientY);
+    dragTarget.pos = vec(e.clientX, e.clientY);
+  }
+});
+
+canvas.addEventListener('mousedown', (e)=>{
+  isDown = true;
+  const mx = e.clientX, my = e.clientY;
+  if(len(sub(p1.pos, vec(mx,my))) < 24) dragTarget = p1;
+  else if(len(sub(p2.pos, vec(mx,my))) < 24) dragTarget = p2;
+});
+
+window.addEventListener('mouseup', (e)=>{
+  if(dragTarget){
+    const vx = (e.movementX || 0) * 25;
+    const vy = (e.movementY || 0) * 25;
+    dragTarget.vel = vec(vx, vy);
+  }
+  isDown=false; dragTarget=null;
+});
+
+canvas.addEventListener('touchstart',(e)=>{
+  e.preventDefault(); let t = e.touches[0];
+  mouse = vec(t.clientX,t.clientY); isDown=true;
+});
+canvas.addEventListener('touchmove',(e)=>{
+  e.preventDefault(); let t=e.touches[0];
+  mouse = vec(t.clientX,t.clientY);
+});
+canvas.addEventListener('touchend',(e)=>{
+  isDown=false; dragTarget=null;
+});
+
+let sensitivity = 0.35;
+let last = performance.now();
+
+function step(now){
+  let dt = (now - last) / 1000;
+  dt = Math.min(1/30, dt);
+  last = now;
+
+  P0fixed.y = innerHeight/2;
+  P3fixed.y = innerHeight/2;
+  P3fixed.x = innerWidth - margin;
+
+  if(actionMode.value === 'follow'){
+    let center = vec(innerWidth/2, innerHeight/2);
+    let offset = mul(sub(mouse, center), sensitivity);
+    p1.target = add(vec(lerp(P0fixed.x, P3fixed.x, 0.33), P0fixed.y - 120), mul(offset, 0.6));
+    p2.target = add(vec(lerp(P0fixed.x, P3fixed.x, 0.66), P3fixed.y - 120), mul(offset, 0.6));
+  } else if(actionMode.value === 'drag' && !isDown){
+    p1.target = vec(lerp(P0fixed.x, P3fixed.x, 0.33), P0fixed.y - 120);
+    p2.target = vec(lerp(P0fixed.x, P3fixed.x, 0.66), P3fixed.y - 120);
+  }
+
+  const STEPS = 2;
+  for(let s=0;s<STEPS;s++){
+    p1.step(dt/STEPS);
+    p2.step(dt/STEPS);
+  }
+
+  ctx.clearRect(0,0,innerWidth,innerHeight);
+  ctx.save();
+  ctx.globalAlpha = 0.06;
+  ctx.lineWidth = 1;
+  ctx.strokeStyle = '#fff';
+  for(let x=0;x<innerWidth;x+=60){ ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,innerHeight); ctx.stroke(); }
+  for(let y=0;y<innerHeight;y+=60){ ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(innerWidth,y); ctx.stroke(); }
+  ctx.restore();
+
+  const samples = [];
+  for(let t=0;t<=1.0001;t+=0.01){ samples.push(bezierPoint(t, P0fixed, p1.pos, p2.pos, P3fixed)); }
+  ctx.lineWidth = 5;
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
+  let grad = ctx.createLinearGradient(P0fixed.x,0,P3fixed.x,0);
+  grad.addColorStop(0, '#00f5d4');
+  grad.addColorStop(0.3, '#00bbf9');
+  grad.addColorStop(0.6, '#9b5de5');
+  grad.addColorStop(1, '#f15bb5');
+  ctx.strokeStyle = grad;
+  ctx.beginPath();
+  for(let i=0;i<samples.length;i++){
+    const p = samples[i];
+    if(i===0) ctx.moveTo(p.x,p.y); else ctx.lineTo(p.x,p.y);
+  }
+  ctx.stroke();
+
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = 'rgba(255,255,255,0.8)';
+  for(let t=0;t<=1.0001;t+=0.05){
+    const pt = bezierPoint(t, P0fixed, p1.pos, p2.pos, P3fixed);
+    const d = bezierDeriv(t, P0fixed, p1.pos, p2.pos, P3fixed);
+    const n = normalize(d);
+    const s = 24;
+    ctx.beginPath();
+    ctx.moveTo(pt.x - n.x*s/2, pt.y - n.y*s/2);
+    ctx.lineTo(pt.x + n.x*s/2, pt.y + n.y*s/2);
+    ctx.stroke();
+  }
+
+  ctx.lineWidth = 1.2;
+  ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+  ctx.beginPath();
+  ctx.moveTo(P0fixed.x, P0fixed.y); ctx.lineTo(p1.pos.x, p1.pos.y);
+  ctx.moveTo(p2.pos.x, p2.pos.y); ctx.lineTo(P3fixed.x, P3fixed.y);
+  ctx.stroke();
+
+  function drawControl(pt, color){
+    ctx.beginPath();
+    ctx.fillStyle = color;
+    ctx.arc(pt.x, pt.y, 10, 0, Math.PI*2);
+    ctx.fill();
+    ctx.lineWidth = 1.2;
+    ctx.strokeStyle = 'rgba(0,0,0,0.6)';
+    ctx.stroke();
+  }
+  drawControl(P0fixed, '#22c55e');
+  drawControl(P3fixed, '#22c55e');
+  drawControl(p1.pos, dragTarget===p1? '#fffa65' : '#ffd166');
+  drawControl(p2.pos, dragTarget===p2? '#fffa65' : '#ffd166');
+
+  ctx.fillStyle = 'rgba(255,255,255,0.9)';
+  ctx.font = '12px ui-sans-serif, system-ui';
+  ctx.fillText('FPS ~ ' + Math.round(1/(dt||1e-6)), 12, innerHeight - 12);
+
+  requestAnimationFrame(step);
+}
+requestAnimationFrame(step);

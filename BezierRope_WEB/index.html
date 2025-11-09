@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Interactive Cubic Bézier Rope (Canvas)</title>
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+      background: #0b1020;
+      color: #ddd;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    }
+
+    #ui {
+      position: fixed;
+      left: 12px;
+      top: 12px;
+      background: rgba(255, 255, 255, 0.03);
+      padding: 8px 10px;
+      border-radius: 8px;
+      backdrop-filter: blur(6px);
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      cursor: crosshair;
+    }
+
+    button {
+      margin-left: 6px;
+    }
+
+    label {
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+  <div id="ui">
+    <label>Mode:
+      <select id="mode">
+        <option value="follow">Follow Mouse (spring)</option>
+        <option value="drag">Drag control points</option>
+      </select>
+    </label>
+    <button id="reset">Reset</button>
+  </div>
+
+  <canvas id="c"></canvas>
+  <script src="script.js"></script>
+</body>
+</html>
