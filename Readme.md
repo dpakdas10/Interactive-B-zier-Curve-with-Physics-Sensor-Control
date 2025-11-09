@@ -20,12 +20,10 @@ Both implementations share the same **mathematical and physics model**, but diff
 ## 🖼️ Demo Preview
 
 ### 🌐 Web Version
-
-https://github.com/dpakdas10/Interactive-B-zier-Curve-with-Physics-Sensor-Control/assets/WEB.mp4
+![Web Demo](assets/WEB.gif)
 
 ### 📱 iOS Version
-
-https://github.com/dpakdas10/Interactive-B-zier-Curve-with-Physics-Sensor-Control/assets/IOS.mp4
+![iOS Demo](assets/IOS.gif)
 
 
 
