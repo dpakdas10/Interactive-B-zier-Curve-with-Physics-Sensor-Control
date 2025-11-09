@@ -20,10 +20,14 @@ Both implementations share the same **mathematical and physics model**, but diff
 ## 🖼️ Demo Preview
 
 ### 🌐 Web Version
-![Web Demo](assets/WEB.mp4)
+<video src="assets/WEB.mp4" controls width="600">
+  Your browser does not support the video tag.
+</video>
 
 ### 📱 iOS Version
-![iOS Demo](assets/IOS.mp4)
+<video src="assets/IOS.mp4" controls width="600">
+  Your browser does not support the video tag.
+</video>
 
 
 
